@@ -15,7 +15,10 @@ from PyQt5.QtGui import (
     QPainter, QPen, QColor, QBrush, QPainterPath, QIcon, QPixmap
 )
 
-BASE_DIR      = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE   = os.path.join(BASE_DIR, "crosshair_config.json")
 PROFILES_FILE = os.path.join(BASE_DIR, "crosshair_profiles.json")
 
@@ -139,7 +142,7 @@ def draw_crosshair(painter, cx, cy, cfg):
     color         = QColor(cfg["color"])
     color.setAlpha(cfg.get("opacity", 255))
     outline_color = QColor(cfg.get("outline_color", "#000000"))
-    outline_color.setAlpha(cfg.get("opacity", 255))
+    outline_color.setAlpha(255)
 
     thickness         = max(1, cfg["thickness"])
     outline_thickness = cfg.get("outline_thickness", 1)
@@ -167,9 +170,9 @@ def draw_crosshair(painter, cx, cy, cfg):
     # ── Styles ────────────────────────────────────────────────────
     if style in ("cross", "cross_short", "circle_cross"):
         fao(cx - h_size, cy, cx - h_gap, cy)
+        fao(cx + h_gap,  cy, cx + h_size, cy)
         if not cfg.get("t_style", False):
-            fao(cx + h_gap, cy, cx + h_size, cy)
-        fao(cx, cy - v_size, cx, cy - v_gap)
+            fao(cx, cy - v_size, cx, cy - v_gap)
         fao(cx, cy + v_gap,  cx, cy + v_size)
         if style == "circle_cross":
             r = int(size * 0.7 * ((ar + 1 / ar) / 2))
@@ -179,9 +182,9 @@ def draw_crosshair(painter, cx, cy, cfg):
         d  = int(size * 0.7);  dg = int(gap * 0.7)
         fao(cx - d,  cy - int(d  / ar), cx - dg, cy - int(dg / ar))
         fao(cx + dg, cy + int(dg / ar), cx + d,  cy + int(d  / ar))
+        fao(cx - dg, cy + int(dg / ar), cx - d,  cy + int(d  / ar))
         if not cfg.get("t_style", False):
             fao(cx + d,  cy - int(d  / ar), cx + dg, cy - int(dg / ar))
-            fao(cx - dg, cy + int(dg / ar), cx - d,  cy + int(d  / ar))
 
     elif style == "dot":
         pass
@@ -489,7 +492,7 @@ class SettingsWindow(QMainWindow):
             lambda i: self._set("style", self.style_combo.itemData(i)))
         sg_l.addWidget(self.style_combo)
 
-        self.t_cb = QCheckBox("Modo T (sin brazo derecho)")
+        self.t_cb = QCheckBox("Modo T (sin brazo superior)")
         self.t_cb.setChecked(self.config.get("t_style", False))
         self.t_cb.stateChanged.connect(lambda v: self._set("t_style", bool(v)))
         sg_l.addWidget(self.t_cb)
@@ -660,6 +663,7 @@ class SettingsWindow(QMainWindow):
         self.close()
         win = SettingsWindow(self.config, self.overlay)
         win.show()
+        SettingsWindow._current = win
 
     # ── Profile callbacks ─────────────────────────────────────────
     def _profile_load(self, name, profile_cfg):
@@ -673,6 +677,7 @@ class SettingsWindow(QMainWindow):
         win.active_profile = name
         win.profiles_panel.refresh(name)
         win.show()
+        SettingsWindow._current = win
 
     def _profile_save(self, name):
         self.profiles[name] = copy.deepcopy(self.config)
