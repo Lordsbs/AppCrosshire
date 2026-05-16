@@ -567,17 +567,14 @@ class SettingsWindow(QMainWindow):
         btn = QPushButton(label); btn.setFixedHeight(34)
         self._update_color_btn(btn, self.config.get(key, "#000000"))
         def pick(k=key, b=btn):
-            initial = QColor(self.config.get(k, "#000000"))
-            dialog = QColorDialog(initial)
-            dialog.setWindowTitle(label)
-            dialog.setOption(QColorDialog.DontUseNativeDialog, True)
-            dialog.setWindowFlags(dialog.windowFlags() | Qt.WindowStaysOnTopHint)
-            SettingsWindow._color_dialog = dialog  # evita garbage collection
-            if dialog.exec_():
-                c = dialog.currentColor()
-                self.config[k] = c.name()
+            c = QColorDialog.getColor(
+                QColor(self.config.get(k, "#000000")),
+                None, label,
+                QColorDialog.DontUseNativeDialog
+            )
+            if c.isValid():
                 self._update_color_btn(b, c.name())
-                self._refresh()
+                self._set(k, c.name())
         btn.clicked.connect(pick)
         return btn
 
