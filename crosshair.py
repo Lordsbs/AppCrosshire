@@ -341,7 +341,7 @@ class ProfilesPanel(QWidget):
 
     def _selected_name(self):
         item = self.list_widget.currentItem()
-        return item.text().lstrip("* ").strip() if item else None
+        return item.text()[2:] if item else None
 
     def _load_selected(self):
         name = self._selected_name()
@@ -361,6 +361,10 @@ class ProfilesPanel(QWidget):
         name, ok = QInputDialog.getText(self, "Nuevo perfil", "Nombre del nuevo perfil:")
         if ok and name.strip():
             name = name.strip()
+            if name in self.profiles:
+                QMessageBox.warning(self, "Perfil existente",
+                                    f"Ya existe un perfil con el nombre '{name}'.")
+                return
             self.on_new(name)
             self.active_name = name
             self._refresh_list()
@@ -388,12 +392,13 @@ class ProfilesPanel(QWidget):
 # SETTINGS WINDOW
 # ─────────────────────────────────────────────────────────────────────────────
 class SettingsWindow(QMainWindow):
-    def __init__(self, config, overlay):
+    def __init__(self, config, overlay, active_profile=None):
         super().__init__()
-        self.config         = config
-        self.overlay        = overlay
-        self.profiles       = load_profiles()
-        self.active_profile = list(self.profiles.keys())[0]
+        self.config   = config
+        self.overlay  = overlay
+        self.profiles = load_profiles()
+        keys = list(self.profiles.keys())
+        self.active_profile = active_profile if active_profile in self.profiles else keys[0]
         self.setWindowTitle("Crosshair Manager")
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.Window)
         self.setMinimumWidth(700)
@@ -602,7 +607,7 @@ class SettingsWindow(QMainWindow):
 
     def _rebuild(self):
         self.close()
-        win = SettingsWindow(self.config, self.overlay)
+        win = SettingsWindow(self.config, self.overlay, self.active_profile)
         win.show()
         SettingsWindow._current = win
 
@@ -611,12 +616,8 @@ class SettingsWindow(QMainWindow):
         screen = self.config.get("screen_index", 0)
         self.config.update(copy.deepcopy(profile_cfg))
         self.config["screen_index"] = screen
-        self.active_profile = name
-        self._refresh()
         self.close()
-        win = SettingsWindow(self.config, self.overlay)
-        win.active_profile = name
-        win.profiles_panel.refresh(name)
+        win = SettingsWindow(self.config, self.overlay, name)
         win.show()
         SettingsWindow._current = win
 
@@ -631,9 +632,15 @@ class SettingsWindow(QMainWindow):
         self.active_profile = name
 
     def _profile_delete(self, name):
-        if name in self.profiles:
-            del self.profiles[name]
-            save_profiles(self.profiles)
+        if name not in self.profiles:
+            return
+        del self.profiles[name]
+        save_profiles(self.profiles)
+        if name == self.active_profile:
+            first = list(self.profiles.keys())[0]
+            self.active_profile = first
+            self.config.update(copy.deepcopy(self.profiles[first]))
+            self._refresh()
 
     def closeEvent(self, event):
         save_config(self.config)
