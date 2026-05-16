@@ -13,7 +13,7 @@ if errorlevel 1 (
 )
 
 echo Compilando ejecutable portable...
-pyinstaller --clean crosshair.spec
+python -m PyInstaller --clean crosshair.spec
 if errorlevel 1 (
     echo ERROR: Fallo al compilar.
     pause
