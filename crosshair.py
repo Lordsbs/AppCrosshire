@@ -566,34 +566,14 @@ class SettingsWindow(QMainWindow):
     def _make_color_btn(self, label, key):
         btn = QPushButton(label); btn.setFixedHeight(34)
         self._update_color_btn(btn, self.config.get(key, "#000000"))
-        def pick(k=key, b=btn):
-            log_path = os.path.join(BASE_DIR, "debug.log")
-            def log(msg):
-                try:
-                    with open(log_path, "a", encoding="utf-8") as f:
-                        f.write(msg + "\n")
-                except Exception:
-                    pass
-            log(f"=== pick(k={k!r}) ===")
-            log(f"  config id: {id(self.config)}")
-            log(f"  overlay.config id: {id(self.overlay.config)}")
-            log(f"  preview.config id: {id(self.preview.config)}")
-            log(f"  same dicts: settings==overlay={self.config is self.overlay.config}, settings==preview={self.config is self.preview.config}")
-            log(f"  current config[{k!r}]: {self.config.get(k)!r}")
+        def pick(_checked=False, k=key, b=btn):
             initial = QColor(self.config.get(k, "#000000"))
             c = QColorDialog.getColor(initial, None, label)
-            log(f"  dialog returned: name={c.name()!r}, isValid={c.isValid()}")
             if c.isValid():
                 new_color = c.name()
                 self.config[k] = new_color
-                log(f"  after set: config[{k!r}]={self.config.get(k)!r}, overlay.config[{k!r}]={self.overlay.config.get(k)!r}")
                 self._update_color_btn(b, new_color)
-                self.preview.update_config(self.config)
-                self.overlay.update_config(self.config)
-                log(f"  after update_config: overlay.config id={id(self.overlay.config)}, overlay.config[{k!r}]={self.overlay.config.get(k)!r}")
-                self.preview.repaint()
-                self.overlay.repaint()
-                log(f"  done")
+                self._refresh()
         btn.clicked.connect(pick)
         return btn
 
