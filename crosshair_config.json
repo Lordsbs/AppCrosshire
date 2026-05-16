@@ -1,0 +1,17 @@
+{
+  "style": "dot",
+  "size": 36,
+  "thickness": 3,
+  "gap": 14,
+  "color": "#00FF41",
+  "outline_color": "#000000",
+  "outline": true,
+  "outline_thickness": 1,
+  "dot": true,
+  "dot_size": 3,
+  "opacity": 255,
+  "aspect_ratio": 1.0,
+  "t_style": false,
+  "show": true,
+  "screen_index": 0
+}
