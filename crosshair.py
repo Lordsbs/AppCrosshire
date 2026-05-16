@@ -1,7 +1,6 @@
 import sys
 import json
 import os
-import math
 import copy
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QMainWindow, QVBoxLayout, QHBoxLayout,
@@ -12,7 +11,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import (
-    QPainter, QPen, QColor, QBrush, QPainterPath, QIcon, QPixmap
+    QPainter, QPen, QColor, QBrush, QIcon, QPixmap
 )
 
 if getattr(sys, 'frozen', False):
@@ -42,18 +41,12 @@ DEFAULT_CONFIG = {
 
 STYLES = {
     "cross":        "Cruz clasica",
-    "cross_short":  "Cruz corta",
     "dot":          "Solo punto",
     "circle":       "Circulo",
-    "circle_cross": "Circulo + Cruz",
-    "sniper":       "Francotirador",
-    "chevron":      "Chevron",
-    "diamond":      "Diamante",
-    "square":       "Cuadrado",
-    "arrow":        "Flecha",
-    "ngon":         "Estrella",
     "x_cross":      "X (aspa)",
+    "circle_cross": "Circulo + Cruz",
     "brackets":     "Corchetes",
+    "dot_circle":   "Punto + Circulo",
 }
 
 
@@ -193,45 +186,18 @@ def draw_crosshair(painter, cx, cy, cfg):
         r = int(size * ((ar + 1 / ar) / 2))
         _circle(painter, cx, cy, r, color, outline_color, thickness, outline_thickness, has_outline)
 
-    elif style == "sniper":
-        thin = max(1, thickness // 2)
-        sw = painter.device().width()
-        sh = painter.device().height()
+    elif style == "dot_circle":
+        r = int(size * ((ar + 1 / ar) / 2))
+        _circle(painter, cx, cy, r, color, outline_color, thickness, outline_thickness, has_outline)
+        dot_r = max(2, thickness + 1)
         if has_outline:
-            draw_line(0, cy, sw, cy, outline_color, thin + 2)
-            draw_line(cx, 0, cx, sh,  outline_color, thin + 2)
-        draw_line(0, cy, sw, cy, color, thin)
-        draw_line(cx, 0, cx, sh,  color, thin)
-        _circle(painter, cx, cy, size, color, outline_color, thickness, outline_thickness, has_outline)
-
-    elif style == "chevron":
-        pts = [(cx, cy + v_size), (cx - h_size, cy - v_size),
-               (cx, cy - int(v_size * 0.4)), (cx + h_size, cy - v_size)]
-        _path(painter, pts, color, outline_color, thickness, outline_thickness, has_outline)
-
-    elif style == "diamond":
-        _polygon(painter,
-                 [(cx, cy - v_size), (cx + h_size, cy), (cx, cy + v_size), (cx - h_size, cy)],
-                 color, outline_color, thickness, outline_thickness, has_outline)
-
-    elif style == "square":
-        combos = ([(outline_color, thickness + outline_thickness * 2)] if has_outline else []) + [(color, thickness)]
-        for col, w in combos:
-            painter.setPen(QPen(col, w))
-            painter.setBrush(Qt.NoBrush)
-            painter.drawRect(cx - h_size, cy - v_size, h_size * 2, v_size * 2)
-
-    elif style == "arrow":
-        _polygon(painter,
-                 [(cx, cy - v_size), (cx + h_size, cy + v_size),
-                  (cx, cy + int(v_size * 0.4)), (cx - h_size, cy + v_size)],
-                 color, outline_color, thickness, outline_thickness, has_outline, filled=True)
-
-    elif style == "ngon":
-        n = 6
-        pts = [(cx + int(h_size * math.cos(math.pi / n + i * 2 * math.pi / n)),
-                cy + int(v_size * math.sin(math.pi / n + i * 2 * math.pi / n))) for i in range(n)]
-        _polygon(painter, pts, color, outline_color, thickness, outline_thickness, has_outline)
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(outline_color))
+            ot = outline_thickness
+            painter.drawEllipse(cx - dot_r - ot, cy - dot_r - ot, (dot_r + ot) * 2, (dot_r + ot) * 2)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(color))
+        painter.drawEllipse(cx - dot_r, cy - dot_r, dot_r * 2, dot_r * 2)
 
     elif style == "brackets":
         blen = v_size
@@ -274,34 +240,6 @@ def _circle(painter, cx, cy, r, color, outline_color, thickness, outline_thickne
     painter.setBrush(Qt.NoBrush)
     painter.drawEllipse(cx - r, cy - r, r * 2, r * 2)
 
-
-def _polygon(painter, pts, color, outline_color, thickness, outline_thickness, has_outline, filled=False):
-    path = QPainterPath()
-    path.moveTo(*pts[0])
-    for p in pts[1:]: path.lineTo(*p)
-    path.closeSubpath()
-    if has_outline:
-        painter.setPen(QPen(outline_color, thickness + outline_thickness * 2,
-                            Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-        painter.setBrush(QBrush(outline_color) if filled else Qt.NoBrush)
-        painter.drawPath(path)
-    painter.setPen(QPen(color, thickness, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-    painter.setBrush(QBrush(color) if filled else Qt.NoBrush)
-    painter.drawPath(path)
-
-
-def _path(painter, pts, color, outline_color, thickness, outline_thickness, has_outline):
-    path = QPainterPath()
-    path.moveTo(*pts[0])
-    for p in pts[1:]: path.lineTo(*p)
-    if has_outline:
-        painter.setPen(QPen(outline_color, thickness + outline_thickness * 2,
-                            Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-        painter.setBrush(Qt.NoBrush)
-        painter.drawPath(path)
-    painter.setPen(QPen(color, thickness, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-    painter.setBrush(Qt.NoBrush)
-    painter.drawPath(path)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -624,8 +562,11 @@ class SettingsWindow(QMainWindow):
         btn = QPushButton(label); btn.setFixedHeight(34)
         self._update_color_btn(btn, self.config.get(key, "#00FF41"))
         def pick(k=key, b=btn):
-            c = QColorDialog.getColor(QColor(self.config[k]), self, label)
-            if c.isValid():
+            dialog = QColorDialog(QColor(self.config[k]))
+            dialog.setWindowTitle(label)
+            dialog.setOption(QColorDialog.DontUseNativeDialog, True)
+            if dialog.exec_():
+                c = dialog.currentColor()
                 self.config[k] = c.name()
                 self._update_color_btn(b, c.name())
                 self._refresh()
