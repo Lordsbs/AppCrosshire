@@ -571,7 +571,7 @@ class SettingsWindow(QMainWindow):
             dialog = QColorDialog(initial)
             dialog.setWindowTitle(label)
             dialog.setOption(QColorDialog.DontUseNativeDialog, True)
-            dialog.setWindowFlags(Qt.Dialog | Qt.WindowStaysOnTopHint)
+            dialog.setWindowFlags(dialog.windowFlags() | Qt.WindowStaysOnTopHint)
             SettingsWindow._color_dialog = dialog  # evita garbage collection
             if dialog.exec_():
                 c = dialog.currentColor()
