@@ -37,6 +37,8 @@ DEFAULT_CONFIG = {
     "t_style": False,
     "show": True,
     "screen_index": 0,
+    "offset_x": 0,
+    "offset_y": 0,
 }
 
 STYLES = {
@@ -122,8 +124,8 @@ class CrosshairOverlay(QWidget):
             return
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        cx = self.width()  // 2
-        cy = self.height() // 2
+        cx = self.width()  // 2 + self.config.get("offset_x", 0)
+        cy = self.height() // 2 + self.config.get("offset_y", 0)
         draw_crosshair(painter, cx, cy, self.config)
         painter.end()
 
@@ -272,7 +274,7 @@ class PreviewWidget(QWidget):
 # PROFILES PANEL
 # ─────────────────────────────────────────────────────────────────────────────
 class ProfilesPanel(QWidget):
-    def __init__(self, profiles, active_name, on_load, on_save_here, on_delete, on_new, parent=None):
+    def __init__(self, profiles, active_name, on_load, on_save_here, on_delete, on_new, on_rename, parent=None):
         super().__init__(parent)
         self.profiles     = profiles
         self.active_name  = active_name
@@ -280,6 +282,7 @@ class ProfilesPanel(QWidget):
         self.on_save_here = on_save_here
         self.on_delete    = on_delete
         self.on_new       = on_new
+        self.on_rename    = on_rename
         self._build()
 
     def _build(self):
@@ -329,6 +332,12 @@ class ProfilesPanel(QWidget):
         b_del.clicked.connect(self._delete_selected)
         r2.addWidget(b_del)
         layout.addLayout(r2)
+
+        r3 = QHBoxLayout()
+        b_ren = QPushButton("✏  Renombrar")
+        b_ren.clicked.connect(self._rename_selected)
+        r3.addWidget(b_ren)
+        layout.addLayout(r3)
 
     def _refresh_list(self):
         self.list_widget.clear()
@@ -382,6 +391,26 @@ class ProfilesPanel(QWidget):
             self.on_delete(name)
             self.active_name = list(self.profiles.keys())[0]
             self._refresh_list()
+
+    def _rename_selected(self):
+        old_name = self._selected_name()
+        if not old_name:
+            return
+        new_name, ok = QInputDialog.getText(self, "Renombrar perfil",
+                                            "Nuevo nombre:", text=old_name)
+        if not ok or not new_name.strip():
+            return
+        new_name = new_name.strip()
+        if new_name == old_name:
+            return
+        if new_name in self.profiles:
+            QMessageBox.warning(self, "Perfil existente",
+                                f"Ya existe un perfil con el nombre '{new_name}'.")
+            return
+        self.on_rename(old_name, new_name)
+        if self.active_name == old_name:
+            self.active_name = new_name
+        self._refresh_list()
 
     def refresh(self, active_name):
         self.active_name = active_name
@@ -485,6 +514,25 @@ class SettingsWindow(QMainWindow):
         self.ar_spin.valueChanged.connect(lambda v: self._set("aspect_ratio", v))
         ar_row.addWidget(self.ar_spin)
         dim_l.addLayout(ar_row)
+
+        off_row = QHBoxLayout()
+        off_row.addWidget(QLabel("Offset X:"))
+        self.offset_x_spin = QSpinBox()
+        self.offset_x_spin.setRange(-500, 500)
+        self.offset_x_spin.setValue(self.config.get("offset_x", 0))
+        self.offset_x_spin.setSuffix(" px")
+        self.offset_x_spin.valueChanged.connect(lambda v: self._set("offset_x", v))
+        off_row.addWidget(self.offset_x_spin)
+        off_row.addSpacing(12)
+        off_row.addWidget(QLabel("Offset Y:"))
+        self.offset_y_spin = QSpinBox()
+        self.offset_y_spin.setRange(-500, 500)
+        self.offset_y_spin.setValue(self.config.get("offset_y", 0))
+        self.offset_y_spin.setSuffix(" px")
+        self.offset_y_spin.valueChanged.connect(lambda v: self._set("offset_y", v))
+        off_row.addWidget(self.offset_y_spin)
+        off_row.addStretch()
+        dim_l.addLayout(off_row)
         left.addWidget(dim_g)
 
         # Colors
@@ -526,6 +574,7 @@ class SettingsWindow(QMainWindow):
             on_save_here = self._profile_save,
             on_delete    = self._profile_delete,
             on_new       = self._profile_new,
+            on_rename    = self._profile_rename,
         )
         self.profiles_panel.setMinimumWidth(190)
         self.profiles_panel.setMaximumWidth(230)
@@ -629,6 +678,14 @@ class SettingsWindow(QMainWindow):
         self.profiles[name] = copy.deepcopy(self.config)
         save_profiles(self.profiles)
         self.active_profile = name
+
+    def _profile_rename(self, old_name, new_name):
+        ordered = {(new_name if k == old_name else k): v for k, v in self.profiles.items()}
+        self.profiles.clear()
+        self.profiles.update(ordered)
+        if self.active_profile == old_name:
+            self.active_profile = new_name
+        save_profiles(self.profiles)
 
     def _profile_delete(self, name):
         if name not in self.profiles:
