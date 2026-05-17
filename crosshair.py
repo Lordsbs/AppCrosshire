@@ -37,6 +37,8 @@ DEFAULT_CONFIG = {
     "t_style": False,
     "show": True,
     "screen_index": 0,
+    "offset_x": 0,
+    "offset_y": 0,
 }
 
 STYLES = {
@@ -122,8 +124,8 @@ class CrosshairOverlay(QWidget):
             return
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        cx = self.width()  // 2
-        cy = self.height() // 2
+        cx = self.width()  // 2 + self.config.get("offset_x", 0)
+        cy = self.height() // 2 + self.config.get("offset_y", 0)
         draw_crosshair(painter, cx, cy, self.config)
         painter.end()
 
@@ -485,6 +487,25 @@ class SettingsWindow(QMainWindow):
         self.ar_spin.valueChanged.connect(lambda v: self._set("aspect_ratio", v))
         ar_row.addWidget(self.ar_spin)
         dim_l.addLayout(ar_row)
+
+        off_row = QHBoxLayout()
+        off_row.addWidget(QLabel("Offset X:"))
+        self.offset_x_spin = QSpinBox()
+        self.offset_x_spin.setRange(-500, 500)
+        self.offset_x_spin.setValue(self.config.get("offset_x", 0))
+        self.offset_x_spin.setSuffix(" px")
+        self.offset_x_spin.valueChanged.connect(lambda v: self._set("offset_x", v))
+        off_row.addWidget(self.offset_x_spin)
+        off_row.addSpacing(12)
+        off_row.addWidget(QLabel("Offset Y:"))
+        self.offset_y_spin = QSpinBox()
+        self.offset_y_spin.setRange(-500, 500)
+        self.offset_y_spin.setValue(self.config.get("offset_y", 0))
+        self.offset_y_spin.setSuffix(" px")
+        self.offset_y_spin.valueChanged.connect(lambda v: self._set("offset_y", v))
+        off_row.addWidget(self.offset_y_spin)
+        off_row.addStretch()
+        dim_l.addLayout(off_row)
         left.addWidget(dim_g)
 
         # Colors
